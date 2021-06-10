@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
@@ -29,7 +30,25 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $data = $request->all();
+
+        $validator = Validator::make($data, [
+            'name' => 'required|max:255',
+            'email' => 'required|email|unique:users',
+            'password' => 'required|confirmed',
+            'balance' => 'required|integer|digits_between:1,5'
+        ]);
+
+        if($validator->fails()){
+            return response(['error' => $validator->errors(),
+                'Validation Error']);
+        }
+
+        $user = User::create($data);
+
+        return response([ 'user' => new
+        UserResource($user),
+            'message' => 'Success'], 200);
     }
 
     /**
@@ -40,7 +59,8 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
-        //
+        return response([ 'user' => new
+        UserResource($user), 'message' => 'Success'], 200);
     }
 
     /**
@@ -52,7 +72,10 @@ class UserController extends Controller
      */
     public function update(Request $request, User $user)
     {
-        //
+        $user->update($request->all());
+
+        return response([ 'user' => new
+        UserResource($user), 'message' => 'Success'], 200);
     }
 
     /**
@@ -63,6 +86,8 @@ class UserController extends Controller
      */
     public function destroy(User $user)
     {
-        //
+        $user->delete();
+
+        return response(['message' => 'User deleted']);
     }
 }
