@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class UserAuthController extends Controller
 {
@@ -14,7 +15,7 @@ class UserAuthController extends Controller
             'name' => 'required|max:255',
             'email' => 'required|email|unique:users',
             'password' => 'required|confirmed',
-            'balance' => 'required|integer|digits_between:1,5'
+            'balance' => 'required|numeric|between:0,999.99'
         ]);
 
         $data['password'] = bcrypt($request->password);
@@ -46,17 +47,25 @@ class UserAuthController extends Controller
 
     public function fill_balance(Request $request)
     {
-        $data = $request->validate([
+
+        $data = $request->all();
+
+        $validator = Validator::make($data, [
             'user_id' => 'required',
-            'amount' => 'required|integer|digits_between:1,5'
+            'amount' => 'required|numeric|between:0,999.99'
         ]);
 
         $id = $request->user_id;
         $user = User::find($id);
 
         if ($user == null) {
-            return response(['error_message' => 'User not found']);
+            return response(['error_message' => 'User not found'], 404);
         }
+        elseif ($validator->fails()){
+            return response(['error' => $validator->errors(),
+                'Validation Error'], 422);
+        }
+
 
         $user->update($request->all());
 

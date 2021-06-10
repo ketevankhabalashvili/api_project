@@ -36,12 +36,12 @@ class UserController extends Controller
             'name' => 'required|max:255',
             'email' => 'required|email|unique:users',
             'password' => 'required|confirmed',
-            'balance' => 'required|integer|digits_between:1,5'
+            'balance' => 'required|numeric|between:0,999.99'
         ]);
 
         if($validator->fails()){
             return response(['error' => $validator->errors(),
-                'Validation Error']);
+                'Validation Error'], 422);
         }
 
         $user = User::create($data);
