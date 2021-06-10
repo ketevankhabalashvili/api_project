@@ -87,4 +87,31 @@ class UserAuthController extends Controller
         return response(['user' => $user, 'message' => 'Success'], 200);
 
     }
+
+    public function balance_history(Request $request) {
+
+        $data = $request->all();
+
+        $validator = Validator::make($data, [
+            'user_id' => 'required'
+        ]);
+
+        $id = $request->user_id;
+        $user = User::find($id);
+
+        if ($user == null) {
+            return response(['error_message' => 'User not found'], 404);
+        }
+        elseif ($validator->fails()){
+            return response(['error' => $validator->errors(),
+                'Validation Error'], 422);
+        }
+        $recipient_user_ID = $id;
+        $transactions = BalanceHistory::query()->where('recipient_user_ID', $recipient_user_ID)->get();
+
+
+        return response(['transactions' => $transactions, 'message' => 'Success'], 200);
+    }
+
+
 }
