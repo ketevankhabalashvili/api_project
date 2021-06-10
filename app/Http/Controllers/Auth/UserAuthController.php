@@ -70,7 +70,7 @@ class UserAuthController extends Controller
         }
 
 
-        $user->update($request->all());
+//        $user->update($request->all());
 
         $user->balance += $request->amount;
         $user->update();
@@ -111,6 +111,57 @@ class UserAuthController extends Controller
 
 
         return response(['transactions' => $transactions, 'message' => 'Success'], 200);
+    }
+
+    public function transfer(Request $request , $user_id , $amount) {
+
+        $data = $request->validate([
+            'email' => 'email|required',
+            'password' => 'required',
+//            'amount' => 'required|numeric|between:0,999.99'
+
+        ]);
+
+//        $dataValidator = $request->all();
+//
+//        $validator = Validator::make($dataValidator, [
+//            'amount' => 'required|numeric|between:0,999.99'
+//        ]);
+
+//        $id = $request->user_id;
+        $id = $user_id;
+        $user = User::find($id);
+
+        if (!auth()->attempt($data)) {
+            return response(['error_message' => 'Incorrect Details.
+            Please try again']);
+        }
+//        elseif ($user == null) {
+//            return response(['error_message' => 'User not found'], 404);
+//        }
+//        elseif ($validator->fails()){
+//            return response(['error' => $validator->errors(),
+//                'Validation Error'], 422);
+//        }
+
+
+        $token = auth()->user()->createToken('API Token')->accessToken;
+
+//        $user->update($request->all());
+
+        $id = auth()->user()->id;
+        $auth_user = User::find($id);
+//        $auth_user->balance -= $request->amount;
+        $auth_user->balance -= $amount;
+        $auth_user->update();
+
+//        $user->balance += ($request->amount)*99/100;
+        $user->balance += ($amount)*99/100;
+        $user->update();
+
+
+        return response(['user' => auth()->user(), 'token' => $token]);
+
     }
 
 
