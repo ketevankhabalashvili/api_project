@@ -43,4 +43,28 @@ class UserAuthController extends Controller
         return response(['user' => auth()->user(), 'token' => $token]);
 
     }
+
+    public function fill_balance(Request $request)
+    {
+        $data = $request->validate([
+            'user_id' => 'required',
+            'amount' => 'required|integer|digits_between:1,5'
+        ]);
+
+        $id = $request->user_id;
+        $user = User::find($id);
+
+        if ($user == null) {
+            return response(['error_message' => 'User not found']);
+        }
+
+        $user->update($request->all());
+
+        $user->balance += $request->amount;
+        $user->update();
+
+
+        return response(['user' => $user, 'message' => 'Success'], 200);
+
+    }
 }

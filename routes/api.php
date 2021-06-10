@@ -21,5 +21,7 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
 
 Route::post('/register', 'App\Http\Controllers\Auth\UserAuthController@register');
 Route::post('/login', 'App\Http\Controllers\Auth\UserAuthController@login');
-Route::post('/fill-balance', 'App\Http\Controllers\Auth\UserFillBalanceController@fill_balance');
+Route::post('/fill-balance', 'App\Http\Controllers\Auth\UserAuthController@fill_balance');
+
+
 Route::apiResource('/user', 'UserController')->middleware('auth:api');
