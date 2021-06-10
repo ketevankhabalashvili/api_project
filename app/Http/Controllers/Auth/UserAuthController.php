@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\BalanceHistory;
+use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
 
 class UserAuthController extends Controller
 {
@@ -71,6 +74,14 @@ class UserAuthController extends Controller
 
         $user->balance += $request->amount;
         $user->update();
+
+        $transaction = new BalanceHistory();
+
+        $transaction->recipient_user_ID = $id;
+        $transaction->transaction_time = Carbon::now()->toDateTimeString();
+        $transaction->transaction_amount = $request->amount;
+
+        $transaction->save();
 
 
         return response(['user' => $user, 'message' => 'Success'], 200);
