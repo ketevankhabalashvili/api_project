@@ -14,12 +14,32 @@ class UserAuthController extends Controller
 {
     public function register(Request $request)
     {
+        $validator = Validator::make($request->all(),[
+            'name' => 'required|max:255',
+            'email' => 'required|email|unique:users',
+            'is_admin' => 'integer|between:0,1',
+            'password' => 'required|confirmed',
+            'password_confirmation' => 'required|same:password',
+            'balance' => 'required|numeric|between:0,999.99'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error_message' => $validator->errors()->first()], 422);
+        }
+
         $data = $request->validate([
             'name' => 'required|max:255',
             'email' => 'required|email|unique:users',
+            'is_admin' => 'integer|between:0,1',
             'password' => 'required|confirmed',
+            'password_confirmation' => 'required|same:password',
             'balance' => 'required|numeric|between:0,999.99'
         ]);
+
+        if (!auth()->attempt($data)) {
+            return response(['error_message' => 'Incorrect Details.
+            Please try again'], 422);
+        }
 
         $data['password'] = bcrypt($request->password);
 
@@ -32,6 +52,15 @@ class UserAuthController extends Controller
 
     public function login(Request $request)
     {
+        $validator = Validator::make($request->all(),[
+            'email' => 'email|required',
+            'password' => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error_message' => $validator->errors()->first()], 422);
+        }
+
         $data = $request->validate([
             'email' => 'email|required',
             'password' => 'required'
@@ -58,15 +87,16 @@ class UserAuthController extends Controller
             'amount' => 'required|numeric|between:0,999.99'
         ]);
 
+
         $id = $request->user_id;
         $user = User::find($id);
 
-        if ($user == null) {
-            return response(['error_message' => 'User not found'], 404);
+
+        if ($validator->fails()){
+            return response(['error_message' => $validator->errors()->first()], 422);
         }
-        elseif ($validator->fails()){
-            return response(['error' => $validator->errors(),
-                'Validation Error'], 422);
+        elseif ($user == null) {
+            return response(['error_message' => 'User not found'], 404);
         }
 
 
@@ -99,68 +129,152 @@ class UserAuthController extends Controller
         $id = $request->user_id;
         $user = User::find($id);
 
-        if ($user == null) {
-            return response(['error_message' => 'User not found'], 404);
+        if ($validator->fails()){
+            return response(['error_message' => $validator->errors()->first()], 422);
         }
-        elseif ($validator->fails()){
-            return response(['error' => $validator->errors(),
-                'Validation Error'], 422);
+        elseif ($user == null) {
+            return response(['error_message' => 'User not found'], 404);
         }
         $recipient_user_ID = $id;
         $transactions = BalanceHistory::query()->where('recipient_user_ID', $recipient_user_ID)->get();
 
 
-        return response(['transactions' => $transactions, 'message' => 'Success'], 200);
+        return response(['transactions' => $transactions, 'message' => 'Success']);
     }
 
-    public function transfer(Request $request , $user_id , $amount) {
+    public function transfer(Request $request , $user_id ) {
+
+        $dataValidator = $request->all();
+
+
+
+        $password_email_validator = Validator::make($dataValidator, [
+            'email' => 'email|required',
+            'password' => 'required',
+        ]);
+
+        if ($password_email_validator->fails()) {
+            return response(['error_message' => $password_email_validator->errors()->first()], 422);
+        }
+
 
         $data = $request->validate([
             'email' => 'email|required',
             'password' => 'required',
-//            'amount' => 'required|numeric|between:0,999.99'
-
         ]);
 
-//        $dataValidator = $request->all();
-//
-//        $validator = Validator::make($dataValidator, [
-//            'amount' => 'required|numeric|between:0,999.99'
-//        ]);
 
-//        $id = $request->user_id;
+        $validator = Validator::make($dataValidator, [
+            'amount' => 'required|numeric|between:0,999.99'
+        ]);
+
         $id = $user_id;
         $user = User::find($id);
 
         if (!auth()->attempt($data)) {
-            return response(['error_message' => 'Incorrect Details.
-            Please try again']);
+            return response(['error_message' => 'Incorrect Details. Please try again'], 422);
         }
-//        elseif ($user == null) {
-//            return response(['error_message' => 'User not found'], 404);
-//        }
-//        elseif ($validator->fails()){
-//            return response(['error' => $validator->errors(),
-//                'Validation Error'], 422);
-//        }
+        elseif ($user == null) {
+            return response(['error_message' => 'User not found'], 404);
+        }
+        elseif ($validator->fails()){
+            return response(['error_message' => $validator->errors()->first()], 422);
+        }
+
 
 
         $token = auth()->user()->createToken('API Token')->accessToken;
 
-//        $user->update($request->all());
-
         $id = auth()->user()->id;
         $auth_user = User::find($id);
-//        $auth_user->balance -= $request->amount;
-        $auth_user->balance -= $amount;
+        $auth_user->balance -= $request->amount;
         $auth_user->update();
 
-//        $user->balance += ($request->amount)*99/100;
-        $user->balance += ($amount)*99/100;
+        $user->balance += ($request->amount)*99/100;
         $user->update();
 
+        $transaction = new Transaction();
+        $transaction->sender_user_id = $id;
+        $transaction->recipient_user_id = $user_id;
+        $transaction->amount = $request->amount;
+        $transaction->commission_amount	= ($request->amount)*1/100;
 
-        return response(['user' => auth()->user(), 'token' => $token]);
+        $transaction->save();
+
+
+
+        return response(['message' => 'Successful transfer']);
+
+    }
+
+    public function my_transactions(Request $request) {
+
+        $validator = Validator::make($request->all(), [
+            'email' => 'email|required',
+            'password' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return response(['error_message' => $validator->errors()->first()], 422);
+        }
+
+        $data = $request->validate([
+            'email' => 'email|required',
+            'password' => 'required',
+        ]);
+
+
+        if (!auth()->attempt($data)) {
+            return response(['error_message' => 'Incorrect Details.
+            Please try again'], 422);
+        }
+
+        $token = auth()->user()->createToken('API Token')->accessToken;
+
+        $id = auth()->user()->id;
+
+
+        $transaction = Transaction::where('sender_user_id', $id)->distinct()->get();
+
+        return response(['message' => $transaction]);
+
+    }
+
+    public function transactions(Request $request) {
+
+        $validator = Validator::make($request->all(), [
+            'email' => 'email|required',
+            'password' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return response(['error_message' => $validator->errors()->first()], 422);
+        }
+
+        $data = $request->validate([
+            'email' => 'email|required',
+            'password' => 'required',
+        ]);
+
+
+        if (!auth()->attempt($data)) {
+            return response(['error_message' => 'Incorrect Details.
+            Please try again'], 422);
+        }
+
+        $token = auth()->user()->createToken('API Token')->accessToken;
+
+        $is_admin = auth()->user()->is_admin;
+
+        $transaction = Transaction::all();
+        $commission_sum = Transaction::sum('commission_amount');
+
+        if ($is_admin == 1) {
+            return response(['message' => ['transaction_list' => $transaction, 'commission_sum' => $commission_sum]]);
+        }
+        else {
+            return response(['message' => 'Access Denied']);
+        }
 
     }
 
